@@ -244,15 +244,14 @@ visualize_data(val_data)
 
 val_images = []
 val_masks = []
-train_images = []  # List to store normalized images
-train_masks = []   # List to store masks
+train_images = []  
+train_masks = []   
 
 for image_path, mask_path in zip(train_image_paths, train_mask_paths):
-    # Load the image and mask
+  
     image = cv2.imread(image_path)
     mask = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED)
 
-    # Apply stain normalization
     image_normalized = stain_normalization(image_path)
 
     # Check if the image and mask have the correct dimensions
