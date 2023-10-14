@@ -47,7 +47,7 @@ svs_files = [f for f in os.listdir(input_directory) if f.endswith(".svs")]
 for svs_file in svs_files:
     svs_path = os.path.join(input_directory, svs_file)
     
-    # Extract the image number from the file name (assuming the file name format is "number.svs")
+    # Extract the image number from the file name 
     image_number = svs_file.split(".")[0]
 
     # Define the output path for the level 1 image
@@ -56,7 +56,7 @@ for svs_file in svs_files:
     # Open the SVS slide
     slide = OpenSlide(svs_path)
 
-    # Read the image at a higher resolution level (e.g., level 0) and convert it to RGB
+    # Read the image at a higher resolution level and convert it to RGB
     higher_res_image = slide.read_region((0, 0), 0, slide.level_dimensions[0]).convert("RGB")
 
     # Resize the higher resolution image to the level 1 dimensions using Lanczos resampling
@@ -313,7 +313,7 @@ for image_file in image_files:
         # Load the mask
         mask = Image.open(mask_path)
 
-        # Analyze the mask (e.g., check if it contains non-zero pixels)
+        # Analyze the mask 
         mask_array = np.array(mask)
         has_cancer = np.any(mask_array > 0)
 
