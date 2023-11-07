@@ -33,36 +33,92 @@ from PIL import Image
 
 
 
+def is_mostly_white(image_path, threshold=200):
+    image = cv2.imread(image_path)
+    if image is None:
+        return False
+    avg_pixel_value = image.mean()
+    if avg_pixel_value > threshold:
+        print(f"Average pixel value: {avg_pixel_value} - Deleting {image_path}")
+        return True
+    return False
 
-input_path = "/Users/krishsarin/Downloads/Krish/level1/120342_level_1_image.png"
+def is_mostly_black(image_path, threshold=100):
+    image = cv2.imread(image_path)
+    if image is None:
+        return False
+    avg_pixel_value = image.mean()
+    if avg_pixel_value < threshold:
+        print(f"Average pixel value: {avg_pixel_value} - Deleting {image_path}")
+        return True
+    return False
+
+def delete_mostly_white_images(image_dir, mask_dir, threshold=200):
+    for subdirectory in os.listdir(image_dir):
+        if os.path.isdir(os.path.join(image_dir, subdirectory)):
+            img_subdir = os.path.join(image_dir, subdirectory)
+            mask_subdir = os.path.join(mask_dir, subdirectory)
+
+            image_files = [f for f in os.listdir(img_subdir) if f.endswith(".png")]
+
+            for image_file in image_files:
+                image_path = os.path.join(img_subdir, image_file)
+                mask_path = os.path.join(mask_subdir, image_file.replace("image_patch", "mask_patch"))
+
+                if is_mostly_white(image_path, threshold=threshold):
+                    os.remove(image_path)
+                    os.remove(mask_path)
+
+def delete_mostly_black_images(image_dir, mask_dir, threshold=150):
+    for subdirectory in os.listdir(image_dir):
+        if os.path.isdir(os.path.join(image_dir, subdirectory)):
+            img_subdir = os.path.join(image_dir, subdirectory)
+            mask_subdir = os.path.join(mask_dir, subdirectory)
+
+            image_files = [f for f in os.listdir(img_subdir) if f.endswith(".png")]
+
+            for image_file in image_files:
+                image_path = os.path.join(img_subdir, image_file)
+                mask_path = os.path.join(mask_subdir, image_file.replace("image_patch", "mask_patch"))
+
+                if is_mostly_black(image_path, threshold=threshold):
+                    os.remove(image_path)
+                    os.remove(mask_path)
+                    
+def has_cancerous_regions(mask_path, threshold=0.5):
+    mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
+    if mask is None:
+        return False
+    # Calculate the fraction of white (cancerous) pixels in the mask
+    white_pixel_fraction = np.sum(mask > 0) / mask.size
+    return white_pixel_fraction > threshold
+
+def has_padding(image_path, threshold=240):
+    image = cv2.imread(image_path)
+    if image is None:
+        return False
+    height, width, _ = image.shape
+    return (height < 512 or width < 512) and image.mean() > threshold
 
 
 
 input_directory = "/Users/krishsarin/Downloads/Krish/resized_masks/"
 output_directory = "/Users/krishsarin/Downloads/Krish/level1/"
 
-# Get a list of all SVS files in the input directory
+
 svs_files = [f for f in os.listdir(input_directory) if f.endswith(".svs")]
 
 for svs_file in svs_files:
     svs_path = os.path.join(input_directory, svs_file)
-    
-    # Extract the image number from the file name 
     image_number = svs_file.split(".")[0]
-
-    # Define the output path for the level 1 image
     output_path = os.path.join(output_directory, f"{image_number}_level_1_image.png")
 
-    # Open the SVS slide
     slide = OpenSlide(svs_path)
 
-    # Read the image at a higher resolution level and convert it to RGB
     higher_res_image = slide.read_region((0, 0), 0, slide.level_dimensions[0]).convert("RGB")
 
-    # Resize the higher resolution image to the level 1 dimensions using Lanczos resampling
     level_1_image = higher_res_image.resize(slide.level_dimensions[1], Image.LANCZOS)
 
-    # Save the level 1 image as PNG
     level_1_image.save(output_path, format="PNG")
 
     print(f"Processed {svs_file} and saved as {output_path}")
@@ -70,31 +126,25 @@ for svs_file in svs_files:
 svs_directory = "/Users/krishsarin/Downloads/Krish/level1/"
 resized_mask_directory = "/Users/krishsarin/Downloads/Krish/level1/"
 
-# Get a list of all level 1 SVS files in the directory
 svs_files = [f for f in os.listdir(svs_directory) if f.endswith("_level_1_image.png")]
 
 for svs_file in svs_files:
     Image.MAX_IMAGE_PIXELS = None
-    # Extract the image number from the file name
+
     image_number = svs_file.split("_")[0]
 
-    # Define the output path for the resized mask (in the level1 directory)
     resized_mask_path = os.path.join(resized_mask_directory, f"{image_number}_level_1_mask.png")
 
-    # Open the level 1 SVS image to get its dimensions
     svs_path = os.path.join(svs_directory, svs_file)
     svs_image = Image.open(svs_path)
     
-    # Get the dimensions of the level 1 SVS image
     level_1_dimensions = svs_image.size
 
-    # Define the input path for the mask (assuming the mask file name format is "number_mask.png")
     mask_path = os.path.join('/Users/krishsarin/Downloads/Krish/resized_masks', f"{image_number}_mask.png")
 
-    # Open the mask image
+
     mask_image = Image.open(mask_path)
 
-    # Resize the mask to the level 1 dimensions using Lanczos resampling
     resized_mask = mask_image.resize(level_1_dimensions, Image.LANCZOS)
 
     # Save the resized mask as PNG in the level1 directory
@@ -102,95 +152,94 @@ for svs_file in svs_files:
 
     print(f"Processed {mask_path} and saved as {resized_mask_path}")
 
-svs_directory = "/Users/krishsarin/Downloads/Krish/level1/"
-
-# Get a list of all image files in the level1 directory
-image_files = [f for f in os.listdir(svs_directory) if f.endswith(".png")]
-
-for image_file in image_files:
-    # Define the full path to the image
-    image_path = os.path.join(svs_directory, image_file)
-
-    # Open the image to get its dimensions
-    image = Image.open(image_path)
-
-    # Get and print the dimensions of the image
-    dimensions = image.size
-    print(f"Image: {image_file}, Dimensions: {dimensions}")
-
-
-# Load the image and mask
-image_path = "/Users/krishsarin/Downloads/Krish/120375_level_2_image.png"  # Replace with the actual path to your image
-mask_path = "/Users/krishsarin/Downloads/Krish/original_masks/120375_mask.png"    # Replace with the actual path to your mask
-image = Image.open(image_path)
-image_width, image_height = image.size
-mask = Image.open(mask_path)
-mask_resize = mask.resize((image_width, image_height))
-plt.imshow(mask_resize)
-plt.imshow(image)
-mask_width, mask_height = mask_resize.size
-print(image_width, image_height)
-print(mask_width, mask_height)
-# Get the dimensions of the image
 
 
 
-# Output directories for saving patches
+
+
 output_image_dir = "/Users/krishsarin/Downloads/Krish/level1/output_img"
 output_mask_dir = "/Users/krishsarin/Downloads/Krish/level1/output_mask"
 
-# Create output directories if they don't exist
 os.makedirs(output_image_dir, exist_ok=True)
 os.makedirs(output_mask_dir, exist_ok=True)
 
-# Patch size
 patch_size = 512
 level1_directory = "/Users/krishsarin/Downloads/Krish/level1"
 
-# Get a list of image files in the "level1" directory
+
 image_files = [f for f in os.listdir(level1_directory) if f.endswith("_image.png")]
 
 for image_file in image_files:
-    # Extract the image number from the image file name
+    
     image_number = image_file.split("_")[0]
-    
-    # Construct the corresponding mask file name
+
     mask_file = f"{image_number}_level_1_mask.png"
-    
-    # Open the image and mask
+
     image_path = os.path.join(level1_directory, image_file)
     mask_path = os.path.join(level1_directory, mask_file)
     
     image = Image.open(image_path)
     mask = Image.open(mask_path)
-    
-    # Get image dimensions
+
     image_width, image_height = image.size
     
-    # Loop through the image to create patches
-    index = 0  # Reset index for each image
+    index = 0  
     for y in range(0, image_height, patch_size):
         for x in range(0, image_width, patch_size):
-            # Define the coordinates for the current patch
+            
             patch_coords = (x, y, x + patch_size, y + patch_size)
 
-            # Crop the patch from the image and mask
+            
             image_patch = image.crop(patch_coords)
             mask_patch = mask.crop(patch_coords)
 
-            # Create subdirectories for each image and mask pair
+            
             image_subdir = os.path.join(output_image_dir, image_number)
             mask_subdir = os.path.join(output_mask_dir, image_number)
             
             os.makedirs(image_subdir, exist_ok=True)
             os.makedirs(mask_subdir, exist_ok=True)
 
-            # Save the patch in the corresponding subdirectories
+            
             image_patch.save(os.path.join(image_subdir, f"image_patch_{index}.png"), format="PNG")
             mask_patch.save(os.path.join(mask_subdir, f"mask_patch_{index}.png"), format="PNG")
 
-            index += 1  # Increment index for the next patch
+            index += 1  
 
+
+output_image_dir = "/Users/krishsarin/Downloads/Krish/new/512_img"
+output_mask_dir = "/Users/krishsarin/Downloads/Krish/new/512_mask"
+
+for root, dirs, files in os.walk(output_image_dir):
+    for directory in dirs:
+        image_subdir = os.path.join(output_image_dir, directory)
+        mask_subdir = os.path.join(output_mask_dir, directory)
+        image_files = [f for f in os.listdir(image_subdir) if f.endswith(".png")]
+        for image_file in image_files:
+            image_path = os.path.join(image_subdir, image_file)
+            mask_path = os.path.join(mask_subdir, image_file.replace("image_patch", "mask_patch"))
+            if is_mostly_white(image_path):
+                os.remove(image_path)  
+                os.remove(mask_path)  
+                print(f"Deleted image with padding: {image_file}")
+
+output_image_dir = "/Users/krishsarin/Downloads/Krish/level1/output_img"
+output_mask_dir = "/Users/krishsarin/Downloads/Krish/level1/output_mask"
+
+for root, dirs, files in os.walk(output_image_dir):
+    for directory in dirs:
+        image_subdir = os.path.join(output_image_dir, directory)
+        mask_subdir = os.path.join(output_mask_dir, directory)
+        image_files = [f for f in os.listdir(image_subdir) if f.endswith(".png")]
+
+        for image_file in image_files:
+            image_path = os.path.join(image_subdir, image_file)
+            mask_path = os.path.join(mask_subdir, image_file.replace("image_patch", "mask_patch"))
+
+            if is_mostly_black_with_some_white(image_path):
+                os.remove(image_path)  
+                os.remove(mask_path)  
+                print(f"Deleted mostly black image: {image_file}")
 
 
 
