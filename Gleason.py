@@ -263,13 +263,13 @@ num_batches = len(train_generator) // custom_batch_size
     
 val_datagen = ImageDataGenerator(rescale=1./255)
 
-# Create the flow from directory generator for validation set
+
 val_generator = val_datagen.flow_from_directory(
     val_data_dir,
     target_size=(512, 512),
     batch_size=8,
     class_mode='categorical',
-    shuffle=False  # Set to False for validation and testing sets
+    shuffle=False  
 )
 
 #Val data generator creation
