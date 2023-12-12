@@ -58,12 +58,12 @@ IMG_CHANNELS = 3
 
 def lr_scheduler(epoch):
     initial_learning_rate = 0.001
-    drop = 0.5  # Learning rate will be reduced by half every few epochs
-    epochs_drop = 10  # Reduce learning rate every 10 epochs
+    drop = 0.5  
+    epochs_drop = 10  
     learning_rate = initial_learning_rate * (drop ** (epoch // epochs_drop))
     return learning_rate
 
-# If lengths are not the same this can find differences
+
 def count_images_in_directory(directory):
     count = 0
     for root, dirs, files in os.walk(directory):
@@ -106,13 +106,13 @@ def list_files_in_directory(directory):
 def get_image_paths_in_directory(directory):
     image_paths = []
 
-    # Iterate through files in the directory
+    
     for filename in os.listdir(directory):
         filepath = os.path.join(directory, filename)
 
-        # Checks if the file is a regular file (not a directory)
+       
         if os.path.isfile(filepath):
-            # Checks if the file is an image 
+       
             valid_extensions = ['.jpg', '.jpeg', '.png', '.bmp', '.gif']
             if any(filepath.lower().endswith(ext) for ext in valid_extensions):
                 image_paths.append(filepath)
@@ -181,20 +181,19 @@ print(len(val_mask_paths))
 
 
 
-# Load image paths and mask paths
 train_image_paths = list_files_in_directory(train_image_dir)
 train_mask_paths = list_files_in_directory(train_mask_dir)
 val_image_paths = list_files_in_directory(val_image_dir)
 val_mask_paths = list_files_in_directory(val_mask_dir)
 print(len(train_mask_paths))
 
-# Shuffle the data
+
 train_data = list(zip(train_image_paths, train_mask_paths))
 val_data = list(zip(val_image_paths, val_mask_paths))
 random.shuffle(train_data)
 random.shuffle(val_data)
 
-# Define stain-normalization function
+
 def apply_stain_norm(image_path):
     image = cv2.imread(image_path)
     normalized_image = stain_norm(image)
@@ -238,9 +237,9 @@ train_data_generator = train_datagen.flow(train_images, train_masks, batch_size=
 
 
 
-val_datagen = ImageDataGenerator(rescale=1.0 / 255.0)  # Only apply normalization
+val_datagen = ImageDataGenerator(rescale=1.0 / 255.0)  
 
-# Specify the same input size as your model's expected input size
+
 input_size = (512, 512)
 
 # Data generator for validation data
@@ -265,9 +264,9 @@ class CustomImageDataGenerator(Sequence):
         y = np.zeros((len(batch_mask_paths), IMG_HEIGHT, IMG_WIDTH, 1), dtype=np.float32)
     
         for i in range(len(batch_image_paths)):
-            X[i] = cv2.imread(batch_image_paths[i]) / 255.0  # Load and normalize images
-            mask = cv2.imread(batch_mask_paths[i], cv2.IMREAD_GRAYSCALE)  # Load masks as grayscale
-            y[i] = mask[:, :, np.newaxis]  # Expand mask dimensions to (512, 512, 1)
+            X[i] = cv2.imread(batch_image_paths[i]) / 255.0  
+            mask = cv2.imread(batch_mask_paths[i], cv2.IMREAD_GRAYSCALE)  
+            y[i] = mask[:, :, np.newaxis]  
     
         if not self.validation:  # Apply data augmentation only during training
             image_augmented = self.image_datagen.flow(X, shuffle=False)
@@ -281,7 +280,7 @@ class CustomImageDataGenerator(Sequence):
 train_data_generator = CustomImageDataGenerator(train_image_paths, train_mask_paths, batch_size, train_datagen, mask_datagen)
 val_data_generator = CustomImageDataGenerator(val_image_paths, val_mask_paths, batch_size, None, validation=True)
 
-num_samples_to_visualize = 9# You can change this number
+num_samples_to_visualize = 9
 
 for i in range(num_samples_to_visualize):
     sample = train_data_generator[i]
@@ -541,9 +540,8 @@ print(f"Average Dice Coefficient: {average_dice}")
 
 
 def create_full_mask_from_biopsy(biopsy_path, model):
-    biopsy_image = Image.open(biopsy_path)  # Use OpenCV to read the biopsy image
+    biopsy_image = Image.open(biopsy_path)  
 
-    # Get the dimensions of the biopsy image
     biopsy_width, biopsy_height = biopsy_image.size
     print(f"Dimensions of biopsy_image: ({biopsy_width}, {biopsy_height})")
 
@@ -556,10 +554,10 @@ def create_full_mask_from_biopsy(biopsy_path, model):
 
     for y in range(0, biopsy_height, patch_size):
         for x in range(0, biopsy_width, patch_size):
-            # Define the coordinates for the current patch
+           
             patch_coords = (x, y, x + patch_size, y + patch_size)
 
-            # Crop the patch from the biopsy image using Image.open
+            
             patch = biopsy_image.crop(patch_coords)
             patch = np.array(patch)
             try:
