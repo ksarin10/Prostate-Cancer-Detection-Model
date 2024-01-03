@@ -23,6 +23,6 @@ from my dataset and I inserted all  of the masks in to their correct coordinates
 cancer mask.
 
 Gleason.py is a file that is able to classify a biopsy image based on it's gleason score, the medical standard
-of how severe the prostate cancer is, using the EfficientNetB0 model architecture. Currently, I'm working on coupling
-this model with the U-Net segmentation model in order to produce a colored biopsy mask that not only segments the 
-cancer within the biopsy image but color codes it based on it's severity on the gleason scale.
+of how severe the prostate cancer is, using the EfficientNetB0 model architecture. Within this file, I've developed a
+function combining the classification with the U-Net segmentation model in order to produce a colored biopsy mask that 
+not only segments the cancer within the biopsy image but color codes it based on it's severity on the gleason scale.
