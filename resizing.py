@@ -285,7 +285,7 @@ for filename in os.listdir(svs_dir):
         image_width, image_height = level_two_dim 
 
       
-        svs_image = slide.read_region((0, 0), 2, level_two_dim).convert("RGB")
+        svs_image = slide.read_region((0, 0), 1, level_one_dim).convert("RGB")
 
       
         Image.MAX_IMAGE_PIXELS = None
