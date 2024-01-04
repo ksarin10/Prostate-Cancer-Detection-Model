@@ -362,6 +362,26 @@ model3.compile(optimizer=Adam(learning_rate=.0001), loss='categorical_crossentro
 
 model3.summary()
 
+base_model = EfficientNetB0(weights='imagenet', include_top=False, input_shape=(512, 512, 3))
+
+
+for layer in base_model.layers:
+    layer.trainable = False
+
+
+x = layers.GlobalAveragePooling2D()(base_model.output)
+x = layers.Dense(128, activation='relu')(x)
+x = layers.Dropout(0.3)(x)  
+x = layers.Dense(64, activation='relu')(x)
+predictions = layers.Dense(2, activation='softmax')(x)  
+
+model2 = Model(inputs=base_model.input, outputs=predictions)
+
+model2.compile(optimizer=Adam(learning_rate=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
+
+model2.summary()
+
+
 loss, accuracy = model3.evaluate(X_val, y_val_categorical)
 print(f'Validation Accuracy: {accuracy * 100:.2f}%')
 
