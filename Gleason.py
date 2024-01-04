@@ -360,8 +360,6 @@ model3 = Model(inputs=base_model.input, outputs=predictions)
 
 model3.compile(optimizer=Adam(learning_rate=.0001), loss='categorical_crossentropy', metrics=['accuracy'])
 
-model3.load_weights('/Users/krishsarin/Downloads/Krish/Results/model/model3.h5')
-
 model3.summary()
 
 loss, accuracy = model3.evaluate(X_val, y_val_categorical)
