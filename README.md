@@ -1,6 +1,6 @@
 # Prostate-Cancer-Detection-Model
 
-The purpose of this resizing.py is to resize all of my wholeslide images into their level one size. The OpenSlide
+The purpose of resizing.py is to resize all of my wholeslide images into their level one size. The OpenSlide
 library's level one images are slightly lower resolution than the wholeslide images but they are 
 significantly easier to process. The original masks and images that I was given were not the same size, so
 I used OpenSlide to resize the images to their level one dimensions, and I used the PIL library to resize
