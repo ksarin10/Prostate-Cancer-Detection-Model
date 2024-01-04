@@ -482,3 +482,160 @@ for filename in os.listdir(directory_path):
 
         print(f"File: {filename}, Predicted class index: {predicted_class}")
 
+
+
+def create_full_mask_from_biopsy1(biopsy_path, model, model2, model4):
+    def simulate_save_and_load(image_array):
+        image = Image.fromarray(image_array)
+        return np.array(image)
+
+    biopsy_image = Image.open(biopsy_path)
+    biopsy_width, biopsy_height = biopsy_image.size
+
+    patch_size = 512
+    coordinates_list = []
+    all_patches = []
+    gleason_predictions = []
+
+    for y in range(0, biopsy_height, patch_size):
+        for x in range(0, biopsy_width, patch_size):
+            patch_coords = (x, y, x + patch_size, y + patch_size)
+            patch = biopsy_image.crop(patch_coords)
+            image_patch_array = simulate_save_and_load(np.array(patch))
+
+            try:
+                img_array = stain_norm(image_patch_array)
+                img_array = np.expand_dims(img_array, axis=0)
+                img_array = preprocess_input(img_array)
+    
+                predictions = model4.predict(img_array)
+                predicted_class = np.argmax(predictions[0])
+                if predicted_class == 0:
+                    gleason_predictions.append(0)
+                elif predicted_class == 1:
+                    predictions = new_model.predict(img_array)
+                    predicted_class = np.argmax(predictions[0])
+                    gleason_predictions.append(predicted_class + 1)
+                
+                all_patches.append(patch)
+                coordinates_list.append(patch_coords)
+
+            except Exception as e:
+                print(f"Stain normalization or prediction failed for patch at ({x}, {y}): {e}")
+
+                continue
+    
+
+    
+    batch_size = 32  
+    batches = [all_patches[i:i+batch_size] for i in range(0, len(all_patches), batch_size)]
+
+    all_masks = []
+
+    for batch, gleason_batch in zip(batches, [gleason_predictions[i:i+batch_size] for i in range(0, len(gleason_predictions), batch_size)]):
+        batch = np.array(batch) / 255.0
+        batch_predictions = model.predict(batch)
+
+        for mask, gleason_score in zip(batch_predictions, gleason_batch):
+            binary_mask = (mask[:, :, 0] > 0.5).astype(np.uint8)
+            color_mask = np.zeros((*binary_mask.shape, 3), dtype=np.uint8)
+
+            if gleason_score == 1:
+                color_mask[binary_mask == 1] = [255,255,0] # Yellow
+            elif gleason_score == 2:
+                color_mask[binary_mask == 1] = [255, 165, 0]  # Orange
+            elif gleason_score == 3:
+                color_mask[binary_mask == 1] = [255, 0, 0]    # Red
+            
+
+            all_masks.append(color_mask)
+
+    full_mask = np.zeros((biopsy_height, biopsy_width, 3), dtype=np.uint8)
+
+    for mask, (left, upper, right, lower) in zip(all_masks, coordinates_list):
+        if mask is None:
+            print(f"Skipping None mask at coordinates ({left}, {upper}, {right}, {lower})")
+            continue
+
+        adjusted_mask = mask.astype(np.uint8)
+
+        try:
+            full_mask[upper:lower, left:right] = np.maximum(full_mask[upper:lower, left:right], adjusted_mask)
+        except ValueError as e:
+            error_message = str(e)
+            match = re.search(r'(\d+),(\d+)', error_message)
+            if match:
+                expected_height, expected_width = map(int, match.groups())
+            else:
+                print(f"Failed to extract expected dimensions from the error message.")
+                continue
+
+            adjusted_upper = upper
+            adjusted_lower = lower + (512 - expected_height)
+            adjusted_left = left
+            adjusted_right = right + (512 - expected_width)
+
+            scale_x = expected_width / mask.shape[1]
+            scale_y = expected_height / mask.shape[0]
+
+            if scale_x < 1 and scale_y < 1:
+                adjusted_mask = cv2.resize(adjusted_mask, (0, 0), fx=scale_x, fy=scale_y)
+                full_mask[adjusted_upper:adjusted_lower, adjusted_left:adjusted_right] = np.maximum(full_mask[adjusted_upper:adjusted_lower, adjusted_left:adjusted_right], adjusted_mask)
+
+    full_mask_pil = Image.fromarray(full_mask)
+    
+    plt.imshow(full_mask_pil)
+    plt.show()
+    yellow = [255, 255, 0]
+    orange = [255, 165, 0]
+    red = [255, 0, 0]
+    
+    # Count pixels for each color
+    yellow_count, orange_count, red_count = 0, 0, 0
+    for mask in all_masks:
+        yellow_count += np.sum(np.all(mask == yellow, axis=-1))
+        orange_count += np.sum(np.all(mask == orange, axis=-1))
+        red_count += np.sum(np.all(mask == red, axis=-1))
+    
+    total_colored = yellow_count + orange_count + red_count
+    
+    # Calculate percentages
+    percentage_yellow = yellow_count / total_colored if total_colored else 0
+    percentage_orange = orange_count / total_colored if total_colored else 0
+    percentage_red = red_count / total_colored if total_colored else 0
+    
+    # Print percentages
+    print(percentage_yellow, percentage_orange, percentage_red)
+    
+    majority_color = max((percentage_yellow, '3'), (percentage_orange, '4'), (percentage_red, '5'), key=lambda x: x[0])[1]
+
+    if majority_color == '3':
+        if percentage_orange <= 0.15 and percentage_red <= 0.15:
+            print("3+3")
+        elif percentage_orange > percentage_red:
+            print("3+4")
+        else:
+            print("3+5")
+    
+    elif majority_color == '4':
+        if percentage_yellow <= 0.15 and percentage_red <= 0.15:
+            print("4+4")
+        elif percentage_yellow > percentage_red:
+            print("4+3")
+        else:
+            print("4+5")
+    
+    else:  
+        if percentage_yellow <= 0.15 and percentage_orange <= 0.15:
+            print("5+5")
+        elif percentage_yellow > percentage_orange:
+            print("5+3")
+        else:
+            print("5+4")
+
+
+model = load_model('/Users/krishsarin/Downloads/Krish/Results/model/model.h5')
+biopsy = '/Users/krishsarin/Downloads/Krish/level1/Gleason/120373_level_1_image.png'
+create_full_mask_from_biopsy1(biopsy, model, new_model, model3)    
+
+
