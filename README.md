@@ -1,28 +1,70 @@
-# Prostate-Cancer-Detection-Model
+# Prostate Cancer Detection Model
 
-The purpose of resizing.py is to resize all of my wholeslide images into their level one size. The OpenSlide
-library's level one images are slightly lower resolution than the wholeslide images but they are 
-significantly easier to process. The original masks and images that I was given were not the same size, so
-I used OpenSlide to resize the images to their level one dimensions, and I used the PIL library to resize
-masks to the level one dimensions of the image. This is essential to the purpose as it allows me to break
-down the images and masks into matching 512x512 patches that can successfully train my model, and save all 
-these matching patches into directories. At the end of this  file, I have a code segment that checks all of 
-the patches within the mask directories that I created and looks for all of the cancer mask patches within 
-these directories and copies those masks and their into two respective directories that will be used for 
-training, validation, and testing. This is essential as the model will only train properly if it is trained
-with the cancer images. The blank masks(non-cancerous masks) significantly outnumber the cancer patches
-and create a data imbalanace that stops the model from training properly.
+A computational-pathology research prototype for locating cancer in prostate-biopsy whole-slide images and exploring Gleason-grade classification.
 
-This file takes the patches from the resizing.py file and trains the model using those patches. The model 
-is created using a U-Net architecture which is optimal for image segmentation processes. Before I train the
-model I read all of the images using cv2 and put them through stain normalization, which is a technique 
-to make all of the biopsies the same color and have the model produce the optimal results. After training
-the model, I created a few functions to create all of the mask predictions and determine the correct 
-coordinates for all of the masks. Then I created an empty mask that is the same size as the real mask 
-from my dataset and I inserted all  of the masks in to their correct coordinates to get the final 
-cancer mask.
+> This repository is an experimental research project, not a clinical diagnostic tool. It has not been validated for patient care.
 
-Gleason.py is a file that is able to classify a biopsy image based on it's gleason score, the medical standard
-of how severe the prostate cancer is, using the EfficientNetB0 model architecture. Within this file, I've developed a
-function combining the classification with the U-Net segmentation model in order to produce a colored biopsy mask that 
-not only segments the cancer within the biopsy image but color codes it based on it's severity on the gleason scale.
+## Pipeline
+
+```mermaid
+flowchart LR
+  A[Whole-slide image + mask] --> B[Level-1 resize]
+  B --> C[512×512 paired patches]
+  C --> D[Background and class filtering]
+  D --> E[Stain normalization]
+  E --> F[U-Net segmentation]
+  F --> G[Reconstructed whole-slide mask]
+  E --> H[EfficientNetB0 classification]
+  H --> I[Gleason-grade overlay]
+```
+
+The preprocessing code resizes slides and masks to matching dimensions, splits them into paired 512×512 patches, removes unusable background regions, and reduces class imbalance by selecting patches that contain annotated cancer. Training code then applies stain normalization before segmentation or classification.
+
+## Repository guide
+
+| File | Purpose |
+| --- | --- |
+| `resizing.py` | Resize whole-slide images and masks, create paired patches, and filter background or empty regions |
+| `normalization.py` | Normalize histology stain appearance using optical-density decomposition |
+| `Model.py` | Train a U-Net segmentation model and reconstruct a whole-slide cancer mask from patch predictions |
+| `Gleason.py` | Train an EfficientNetB0-based classifier and combine grade predictions with segmentation output |
+
+## Main technologies
+
+- Python
+- TensorFlow / Keras
+- OpenCV and Pillow
+- OpenSlide
+- NumPy, scikit-image, and scikit-learn
+
+## Data assumptions
+
+The scripts expect:
+
+- whole-slide images readable by OpenSlide;
+- pixel-aligned annotation masks after resizing;
+- class-labelled folders for Gleason-grade training; and
+- enough local storage to materialize 512×512 image and mask patches.
+
+No dataset or trained weights are included in this repository.
+
+## Reproducing the work
+
+The current files preserve the original research workflow and contain local filesystem paths. Before running them, replace those paths with locations for your own slides, masks, train/validation splits, and model outputs. The scripts are not yet packaged as a one-command training pipeline.
+
+A typical run follows this order:
+
+1. Configure input and output paths in `resizing.py`.
+2. Generate matching image and mask patches.
+3. Configure training and validation directories in `Model.py` or `Gleason.py`.
+4. Train the segmentation model, the grade classifier, or both.
+5. Use the prediction helpers to reconstruct slide-level outputs.
+
+## Current limitations
+
+- Dataset preparation depends on machine-specific paths.
+- Dependency versions and trained weights are not recorded.
+- The repository does not publish a held-out benchmark or clinical validation result.
+- Preprocessing, training, and evaluation are combined in research scripts rather than a reusable package.
+
+The next engineering step is to move paths and hyperparameters into configuration, pin dependencies, separate training from inference, and add a small reproducible example with tests.
